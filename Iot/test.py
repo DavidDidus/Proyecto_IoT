@@ -1,4 +1,22 @@
+import datetime
 import paho.mqtt.client as mqtt
+import psycopg2
+
+def iniciarConexion():
+    parametros = {
+        "host": "localhost",
+        "port": "5432",
+        "user": "postgres",
+        "password": "postgres",
+        "database": "postgres"
+    }
+    global conexion
+    try:
+        conexion = psycopg2.connect(**parametros)
+        print("Conectado")
+    except (Exception, psycopg2.Error) as error:
+        print("Error al conectar con la base de datos", error)
+    
 
 # Función de callback para la conexión
 def on_connect(client, userdata, flags, rc):
@@ -7,8 +25,29 @@ def on_connect(client, userdata, flags, rc):
 
 # Función de callback para la recepción de mensajes
 def on_message(client, userdata, msg):
-    print(f"Mensaje recibido en tema {msg.topic}: {msg.payload.decode()}")
+    print(f"Mensaje recibido en tema {msg.topic}: {msg.payload.decode()}" + str(datetime.datetime.now()))
 
+    # Insertar datos en la base de datos
+    try:
+        insertarRegistro(msg)
+    except (Exception, psycopg2.Error) as error:
+        print("Error al insertar en la base de datos", error)
+
+def insertarRegistro(msg):
+    cursor = conexion.cursor()
+    cursor.execute("INSERT INTO registro_test(registro) values ('Presionado " + msg.payload.decode() + " " + str(datetime.datetime.now()) + "')")
+    conexion.commit()
+    cursor.close()
+
+def verRegistros():
+    cursor = conexion.cursor()
+    cursor.execute("SELECT * FROM registro_test")
+    registros = cursor.fetchall()
+    for registro in registros:
+        print(registro)
+    cursor.close()
+
+iniciarConexion()
 # Configurar el cliente MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -16,6 +55,8 @@ client.on_message = on_message
 
 # Conectar al broker MQTT
 client.connect("test.mosquitto.org", 1883, 60)
+
+verRegistros()
 
 # Bucle de red
 client.loop_forever()

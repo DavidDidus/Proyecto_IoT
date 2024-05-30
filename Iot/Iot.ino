@@ -1,6 +1,10 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-
+#include <TimeLib.h>
+/*
+const char* ssid = "Iphone de David";
+const char* password = "coninlomaslindo";
+*/
 // Configuración de red WiFi
 const char* ssid = "S22";
 const char* password = "12341234";
@@ -14,6 +18,21 @@ const char* mqtt_topic = "test_invernadero/topic";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+
+// Configuración del pin del botón
+const int buttonPin = D1;
+
+// Variables para el estado del botón
+int lastButtonState = LOW;
+int buttonState = LOW;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;  // Tiempo de anti-rebote
+// Variables para el tiempo inicial
+time_t tiempoInicial = 0;
+unsigned long millisPrevio = 0;
+
+
+
 void setup() {
   Serial.begin(115200);
 
@@ -22,6 +41,8 @@ void setup() {
 
   // Configurar el cliente MQTT
   client.setServer(mqtt_server, mqtt_port);
+  setTime(12, 34, 56, 23, 5, 2024); // hora, minuto, segundo, día, mes, año
+ 
 }
 
 void setup_wifi() {
@@ -60,21 +81,40 @@ void reconnect() {
     }
   }
 }
+String getHora() {
+  // Desplazamiento para Chile
+  int timezoneOffset = -4; // UTC-4 para la hora estándar
+  time_t localTime = now() + timezoneOffset * SECS_PER_HOUR;
+  char buffer[20];
+  sprintf(buffer, "%02d:%02d:%02d %02d/%02d/%04d", hour(localTime), minute(localTime), second(localTime), day(localTime), month(localTime), year(localTime));
+  return String(buffer);
+}
+
 
 void loop() {
-  if (!client.connected()) {
+   if (!client.connected()) {
     reconnect();
   }
   client.loop();
 
-  // Publicar un mensaje cada 5 segundos
-  static unsigned long lastMsg = 0;
-  unsigned long now = millis();
-  if (now - lastMsg > 5000) {
-    lastMsg = now;
-    String msg = "Hello MQTT from Arduino";
-    Serial.print("Publicando mensaje: ");
-    Serial.println(msg);
-    client.publish(mqtt_topic, msg.c_str());
+  int reading = digitalRead(buttonPin);
+
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
   }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == LOW) {  // El botón está presionado
+        Serial.println("Botón presionado");
+        String mensaje = String("Botón presionado ");// + getHora();
+        client.publish(mqtt_topic, mensaje.c_str());
+       
+      }
+    }
+  }
+
+  lastButtonState = reading;
 }
