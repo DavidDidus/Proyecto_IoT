@@ -1,39 +1,43 @@
+#include <ESP8266WiFi.h>
 #include "DHT.h"
-#define DHTPIN 2
+
+// Configuración del sensor DHT
+#define DHTPIN 2 // GPIO2 corresponde al pin D4 en el ESP8266
 #define DHTTYPE DHT11
 
 DHT dht(DHTPIN, DHTTYPE);
 
 void setup() {
-  Serial.begin(9600);
-  dht.begin(); // initialize the sensor
+  // Inicia el monitor serial
+  Serial.begin(115200);
+  Serial.println("Inicializando...");
+
+  // Inicia el sensor DHT
+  dht.begin();
+  Serial.println("Sensor DHT inicializado.");
 }
 
 void loop() {
-  // wait a few seconds between measurements.
-  delay(2000);
+  // Lee los datos del sensor DHT
+  Serial.println("Leyendo datos del DHT...");
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
 
-  // read humidity
-  float humi  = dht.readHumidity();
-  // read temperature as Celsius
-  float tempC = dht.readTemperature();
-  // read temperature as Fahrenheit
-  float tempF = dht.readTemperature(true);
-
-  // check if any reads failed
-  if (isnan(humi) || isnan(tempC) || isnan(tempF)) {
-    Serial.println("Failed to read from DHT sensor!");
+  // Verifica si la lectura falló y muestra un error
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Error al leer del sensor DHT");
   } else {
-    Serial.print("Humidity: ");
-    Serial.print(humi);
-    Serial.print("%");
-
-    Serial.print("  |  "); 
-
-    Serial.print("Temperature: ");
-    Serial.print(tempC);
-    Serial.print("°C ~ ");
-    Serial.print(tempF);
-    Serial.println("°F");
+    // Muestra los resultados en el monitor serial
+    Serial.print("Humedad: ");
+    Serial.print(h);
+    Serial.print(" %\t");
+    Serial.print("Temperatura: ");
+    Serial.print(t);
+    Serial.println(" *C");
   }
+
+  // Espera 10 segundos antes de la próxima lectura
+  delay(10000);
+}
+
 }
